@@ -332,19 +332,74 @@ svg.funnel-svg{overflow:visible;}
   <div class="filters">
     <div class="filter-group">
       <span class="filter-label">Mês</span>
-      <select class="filter-select" id="dFilterMes" onchange="renderDaily()" style="min-width:140px"><option value="ALL">Todos</option></select>
+      <div class="ms-wrapper" id="dmsWrapMes">
+        <div class="ms-trigger" id="dmsTriggerMes" onclick="toggleDMS('Mes')">
+          <span class="ms-trigger-text" id="dmsTriggerTextMes">Todos</span>
+          <span class="ms-arrow">▼</span>
+        </div>
+        <div class="ms-dropdown" id="dmsDropdownMes" style="min-width:160px">
+          <div class="ms-search"><input type="text" placeholder="Buscar..." oninput="buildDMSOptions('Mes',this.value)"></div>
+          <div class="ms-actions">
+            <button class="ms-action-btn" onclick="selectAllDMS('Mes')">Todos</button>
+            <button class="ms-action-btn" onclick="clearAllDMS('Mes')">Limpar</button>
+          </div>
+          <div id="dmsOptionsMes"></div>
+        </div>
+      </div>
     </div>
     <div class="filter-group">
       <span class="filter-label">Faixa (aging)</span>
-      <select class="filter-select" id="dFilterFaixa" onchange="renderDaily()" style="min-width:190px"><option value="ALL">Todas</option></select>
+      <div class="ms-wrapper" id="dmsWrapFaixa">
+        <div class="ms-trigger" id="dmsTriggerFaixa" onclick="toggleDMS('Faixa')">
+          <span class="ms-trigger-text" id="dmsTriggerTextFaixa">Todas</span>
+          <span class="ms-arrow">▼</span>
+        </div>
+        <div class="ms-dropdown" id="dmsDropdownFaixa" style="min-width:220px">
+          <div class="ms-search"><input type="text" placeholder="Buscar..." oninput="buildDMSOptions('Faixa',this.value)"></div>
+          <div class="ms-actions">
+            <button class="ms-action-btn" onclick="selectAllDMS('Faixa')">Todas</button>
+            <button class="ms-action-btn" onclick="clearAllDMS('Faixa')">Limpar</button>
+          </div>
+          <div id="dmsOptionsFaixa"></div>
+        </div>
+      </div>
     </div>
     <div class="filter-group">
       <span class="filter-label">Ranking</span>
-      <select class="filter-select" id="dFilterRanking" onchange="renderDaily()" style="min-width:130px"><option value="ALL">Todos</option></select>
+      <div class="ms-wrapper" id="dmsWrapRanking">
+        <div class="ms-trigger" id="dmsTriggerRanking" onclick="toggleDMS('Ranking')">
+          <span class="ms-trigger-text" id="dmsTriggerTextRanking">Todos</span>
+          <span class="ms-arrow">▼</span>
+        </div>
+        <div class="ms-dropdown" id="dmsDropdownRanking" style="min-width:160px">
+          <div class="ms-search"><input type="text" placeholder="Buscar..." oninput="buildDMSOptions('Ranking',this.value)"></div>
+          <div class="ms-actions">
+            <button class="ms-action-btn" onclick="selectAllDMS('Ranking')">Todos</button>
+            <button class="ms-action-btn" onclick="clearAllDMS('Ranking')">Limpar</button>
+          </div>
+          <div id="dmsOptionsRanking"></div>
+        </div>
+      </div>
     </div>
     <div class="filter-group">
       <span class="filter-label">Modo</span>
-      <select class="filter-select" id="dFilterModo" onchange="renderDaily()" style="min-width:90px"><option value="ALL">Todos</option></select>
+      <div class="ms-wrapper" id="dmsWrapModo">
+        <div class="ms-trigger" id="dmsTriggerModo" onclick="toggleDMS('Modo')">
+          <span class="ms-trigger-text" id="dmsTriggerTextModo">Todos</span>
+          <span class="ms-arrow">▼</span>
+        </div>
+        <div class="ms-dropdown" id="dmsDropdownModo" style="min-width:130px">
+          <div class="ms-search"><input type="text" placeholder="Buscar..." oninput="buildDMSOptions('Modo',this.value)"></div>
+          <div class="ms-actions">
+            <button class="ms-action-btn" onclick="selectAllDMS('Modo')">Todos</button>
+            <button class="ms-action-btn" onclick="clearAllDMS('Modo')">Limpar</button>
+          </div>
+          <div id="dmsOptionsModo"></div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-group" style="justify-content:flex-end;align-self:flex-end">
+      <button class="ms-action-btn" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 14px;font-size:11px;cursor:pointer" onclick="clearAllDailyFilters()">✕ Limpar Tudo</button>
     </div>
   </div>
   <div class="main">
@@ -361,7 +416,7 @@ svg.funnel-svg{overflow:visible;}
             <thead><tr>
               <th style="text-align:left">Data</th>
               <th>Acion.</th><th>ALO</th><th>ALO%</th>
-              <th>CPC</th><th>CPCA</th><th>Acordo</th><th>Conv%</th>
+              <th>CPC</th><th>CPC%</th><th>CPCA</th><th>Acordo</th><th>Conv%</th>
             </tr></thead>
             <tbody id="dTableBody"></tbody>
           </table>
@@ -460,7 +515,17 @@ function handleDailyUpload(e){
       dailyData = raw.map(function(r){
         var o={};
         Object.keys(r).forEach(function(k){ o[colMap[k]||k]=r[k]; });
-        if(o.DATA_REF && typeof o.DATA_REF==='object') o.DATA_REF=o.DATA_REF.toISOString().slice(0,10);
+        if(o.DATA_REF!==undefined&&o.DATA_REF!==null){
+          if(typeof o.DATA_REF==='number'){
+            var _d=new Date(Math.round((o.DATA_REF-25569)*86400*1000));
+            o.DATA_REF=_d.toISOString().slice(0,10);
+          } else if(typeof o.DATA_REF==='object'&&o.DATA_REF instanceof Date){
+            o.DATA_REF=o.DATA_REF.toISOString().slice(0,10);
+          } else if(typeof o.DATA_REF==='string'&&o.DATA_REF.indexOf('/')>-1){
+            var _p=o.DATA_REF.split('/');
+            if(_p.length===3) o.DATA_REF=(_p[2].length===4?_p[2]:'20'+_p[2])+'-'+_p[1].padStart(2,'0')+'-'+_p[0].padStart(2,'0');
+          }
+        }
         ['ACIO','ALO','CPC','CPCA','ACORDO'].forEach(function(k){ o[k]=parseInt(o[k])||0; });
         return o;
       });
@@ -837,6 +902,56 @@ function render(){
   renderFaixaTable(filtered);
 }
 
+// ── DAILY MULTISELECT STATE ──
+var selectedDMes=null, selectedDFaixa=null, selectedDRanking=null, selectedDModo=null;
+var DMS_CONFIG={
+  Mes:  {stateKey:'selectedDMes',  dataFn:function(){ var MN={'01':'JAN','02':'FEV','03':'MAR','04':'ABR','05':'MAI','06':'JUN','07':'JUL','08':'AGO','09':'SET','10':'OUT','11':'NOV','12':'DEZ'}; var seen={},out=[]; dailyData.forEach(function(r){ var m=(r.DATA_REF||'').slice(0,7); if(m&&!seen[m]){ seen[m]=1; out.push(m); }}); return out.sort().map(function(m){ var p=m.split('-'); return {val:m,lbl:(MN[p[1]]||p[1])+' '+p[0]}; }); }, labelAll:'Todos', labelPlural:function(n){ return n+' meses'; }},
+  Faixa:{stateKey:'selectedDFaixa', dataFn:function(){ return getUniqueD('FAIXA').map(function(v){return{val:v,lbl:v};}); }, labelAll:'Todas', labelPlural:function(n){ return n+' faixas'; }},
+  Ranking:{stateKey:'selectedDRanking',dataFn:function(){ return getUniqueD('RANKING').map(function(v){return{val:v,lbl:v};}); }, labelAll:'Todos', labelPlural:function(n){ return n+' rankings'; }},
+  Modo: {stateKey:'selectedDModo', dataFn:function(){ return getUniqueD('MODO').map(function(v){return{val:v,lbl:v};}); }, labelAll:'Todos', labelPlural:function(n){ return n+' modos'; }}
+};
+function getDMSState(name){ return eval(DMS_CONFIG[name].stateKey); }
+function setDMSState(name,val){ eval(DMS_CONFIG[name].stateKey+'=val'); }
+function toggleDMS(name){
+  var t=document.getElementById('dmsTrigger'+name), d=document.getElementById('dmsDropdown'+name);
+  var willOpen=!d.classList.contains('open');
+  document.querySelectorAll('.ms-dropdown').forEach(function(x){ x.classList.remove('open'); });
+  document.querySelectorAll('.ms-trigger').forEach(function(x){ x.classList.remove('open'); });
+  if(willOpen){ d.classList.add('open'); t.classList.add('open'); setTimeout(function(){ var i=d.querySelector('input[type=text]'); if(i) i.focus(); },50); }
+}
+function buildDMSOptions(name,q){
+  var cfg=DMS_CONFIG[name], all=cfg.dataFn(), state=getDMSState(name);
+  var vals=q ? all.filter(function(v){ return v.lbl.toLowerCase().indexOf(q.toLowerCase())>=0; }) : all;
+  var c=document.getElementById('dmsOptions'+name); c.innerHTML='';
+  vals.forEach(function(item){
+    var lbl=document.createElement('label');
+    var chk=state===null||state.has(item.val);
+    lbl.className='ms-option'+(chk?' checked':'');
+    var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=chk;
+    cb.addEventListener('change',function(){
+      var allV=all.map(function(x){return x.val;}), cur=getDMSState(name);
+      if(cur===null) cur=new Set(allV);
+      if(cb.checked) cur.add(item.val); else cur.delete(item.val);
+      if(cur.size===0||cur.size===allV.length) cur=null;
+      setDMSState(name,cur);
+      var inp=document.querySelector('#dmsDropdown'+name+' input[type=text]');
+      buildDMSOptions(name,inp?inp.value:'');
+      renderDaily();
+    });
+    lbl.appendChild(cb); lbl.appendChild(document.createTextNode(' '+item.lbl)); c.appendChild(lbl);
+  });
+  updateDMSTriggerText(name);
+}
+function updateDMSTriggerText(name){
+  var cfg=DMS_CONFIG[name], state=getDMSState(name), txt=document.getElementById('dmsTriggerText'+name);
+  if(state===null){ txt.textContent=cfg.labelAll; return; }
+  if(state.size===0){ txt.textContent='Nenhum'; return; }
+  if(state.size===1){ txt.textContent=Array.from(state)[0]; return; }
+  txt.textContent=cfg.labelPlural(state.size);
+}
+function selectAllDMS(name){ setDMSState(name,null); buildDMSOptions(name,''); var inp=document.querySelector('#dmsDropdown'+name+' input[type=text]'); if(inp) inp.value=''; renderDaily(); }
+function clearAllDMS(name){ setDMSState(name,null); buildDMSOptions(name,''); var inp=document.querySelector('#dmsDropdown'+name+' input[type=text]'); if(inp) inp.value=''; renderDaily(); }
+function clearAllDailyFilters(){ ['Mes','Faixa','Ranking','Modo'].forEach(function(n){ setDMSState(n,null); buildDMSOptions(n,''); }); renderDaily(); }
 // ── DAILY LOGIC ──
 function getUniqueD(key){
   var seen={},out=[];
@@ -844,32 +959,14 @@ function getUniqueD(key){
   return out.sort();
 }
 function rebuildDailyFilters(){
-  function rebuild(id,vals,all){
-    var s=document.getElementById(id), cur=s.value;
-    s.innerHTML='<option value="ALL">'+all+'</option>';
-    vals.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; if(v===cur) o.selected=true; s.appendChild(o); });
-  }
-  var MN={'01':'JAN','02':'FEV','03':'MAR','04':'ABR','05':'MAI','06':'JUN','07':'JUL','08':'AGO','09':'SET','10':'OUT','11':'NOV','12':'DEZ'};
-  var mesSet=[];var mseen={};
-  dailyData.forEach(function(r){ var m=(r.DATA_REF||'').slice(0,7); if(m&&!mseen[m]){ mseen[m]=1; mesSet.push(m); }});
-  mesSet.sort();
-  var sm=document.getElementById('dFilterMes'), cur=sm.value;
-  sm.innerHTML='<option value="ALL">Todos</option>';
-  mesSet.forEach(function(m){ var parts=m.split('-'); var o=document.createElement('option'); o.value=m; o.textContent=(MN[parts[1]]||parts[1])+' '+parts[0]; if(m===cur) o.selected=true; sm.appendChild(o); });
-  rebuild('dFilterFaixa',getUniqueD('FAIXA'),'Todas');
-  rebuild('dFilterRanking',getUniqueD('RANKING'),'Todos');
-  rebuild('dFilterModo',getUniqueD('MODO'),'Todos');
+  ['Mes','Faixa','Ranking','Modo'].forEach(function(n){ buildDMSOptions(n,''); });
 }
 function getDailyFiltered(){
-  var mes=document.getElementById('dFilterMes').value;
-  var faixa=document.getElementById('dFilterFaixa').value;
-  var rank=document.getElementById('dFilterRanking').value;
-  var modo=document.getElementById('dFilterModo').value;
   return dailyData.filter(function(r){
-    if(mes!=='ALL'&&(r.DATA_REF||'').indexOf(mes)!==0) return false;
-    if(faixa!=='ALL'&&r.FAIXA!==faixa) return false;
-    if(rank!=='ALL'&&r.RANKING!==rank) return false;
-    if(modo!=='ALL'&&r.MODO!==modo) return false;
+    if(selectedDMes!==null&&!selectedDMes.has((r.DATA_REF||'').slice(0,7))) return false;
+    if(selectedDFaixa!==null&&!selectedDFaixa.has(r.FAIXA)) return false;
+    if(selectedDRanking!==null&&!selectedDRanking.has(r.RANKING)) return false;
+    if(selectedDModo!==null&&!selectedDModo.has(r.MODO)) return false;
     return true;
   });
 }
@@ -913,12 +1010,13 @@ function renderFunnelComp(data){
     h+='<div class="d-comp-card" style="border-color:'+th.color+'44">';
     h+='<div class="d-comp-header" style="background:linear-gradient('+th.grad+')15;border-bottom:1px solid '+th.color+'33">';
     h+='<div><div class="d-comp-month" style="color:'+th.color+'">'+th.name+'</div><div class="d-comp-sub">'+m.dias+' dias · '+fmt(m.ACORDO)+' acordos</div></div>';
-    h+='<div style="text-align:right"><div style="font-family:Barlow Condensed,sans-serif;font-size:22px;font-weight:800;color:'+th.color+'">'+pctS(m.ACORDO,m.ACIO)+'</div><div style="font-size:10px;color:var(--muted)">conv.</div></div></div>';
+    h+='<div style="text-align:right"><div style="font-family:Barlow Condensed,sans-serif;font-size:22px;font-weight:800;color:'+th.color+'">'+pctS(m.ACORDO,m.CPCA)+'</div><div style="font-size:10px;color:var(--muted)">conv.</div></div></div>';
     h+='<div class="d-comp-steps">';
     STEPS.forEach(function(s){
       var val=m[s.key]||0;
-      var w=m.ACIO>0?Math.max(val/m.ACIO*100,1.5):1.5;
-      var pct=s.key==='ACIO'?'100%':pctS(val,m.ACIO);
+      var base=s.key==='CPC'?m.ALO:m.ACIO;
+      var w=base>0?Math.max(val/base*100,1.5):1.5;
+      var pct=s.key==='ACIO'?'100%':s.key==='CPC'?pctS(val,m.ALO):pctS(val,m.ACIO);
       h+='<div class="d-step"><div class="d-step-name">'+s.label+'</div>';
       h+='<div class="d-step-track"><div class="d-step-fill" style="width:'+Math.min(w,100)+'%;background:linear-gradient('+th.grad+')">';
       h+='<span class="d-step-fill-val">'+fmt(val)+'</span><span class="d-step-fill-pct">'+pct+'</span></div></div></div>';
@@ -932,7 +1030,7 @@ function renderFunnelComp(data){
         {lbl:'ALO%',cur:pctN(m.ALO,m.ACIO),prv:pctN(prev.ALO,prev.ACIO),pct:true},
         {lbl:'CPC',cur:m.CPC,prv:prev.CPC,pct:false},
         {lbl:'Acordo',cur:m.ACORDO,prv:prev.ACORDO,pct:false},
-        {lbl:'Conv%',cur:pctN(m.ACORDO,m.ACIO),prv:pctN(prev.ACORDO,prev.ACIO),pct:true}
+        {lbl:'Conv%',cur:pctN(m.ACORDO,m.CPCA),prv:pctN(prev.ACORDO,prev.CPCA),pct:true}
       ];
       deltas.forEach(function(d){
         var diff=d.cur-d.prv, up=diff>=0, c=up?'#3fb950':'#f85149';
@@ -950,13 +1048,14 @@ function renderFunnelComp(data){
 }
 function renderDailyTable(byDate){
   var bA=byDate.reduce(function(b,d){ return d.ACORDO>b.ACORDO?d:b; },byDate[0]);
-  var bC=byDate.reduce(function(b,d){ return pctN(d.ACORDO,d.ACIO)>pctN(b.ACORDO,b.ACIO)?d:b; },byDate[0]);
+  var bC=byDate.reduce(function(b,d){ return pctN(d.ACORDO,d.CPCA)>pctN(b.ACORDO,b.CPCA)?d:b; },byDate[0]);
   document.getElementById('dTableBody').innerHTML=byDate.map(function(d){
-    var conv=pctN(d.ACORDO,d.ACIO), alo=pctN(d.ALO,d.ACIO);
+    var conv=pctN(d.ACORDO,d.CPCA), alo=pctN(d.ALO,d.ACIO), cpc=pctN(d.CPC,d.ALO);
     var cvC=conv>=15?'db-g':conv>=7?'db-o':'db-r';
     var alC=alo>=60?'db-g':alo>=35?'db-o':'db-r';
+    var cpC=cpc>=60?'db-g':cpc>=35?'db-o':'db-r';
     var best=d.data===bA.data||d.data===bC.data;
-    return '<tr class="dt-row'+(best?' best':'')+'"><td>'+d.data.slice(5)+(best?' ⭐':'')+'</td><td>'+fmt(d.ACIO)+'</td><td>'+fmt(d.ALO)+'</td><td><span class="dt-badge '+alC+'">'+alo.toFixed(1)+'%</span></td><td>'+fmt(d.CPC)+'</td><td>'+fmt(d.CPCA)+'</td><td><strong style="color:var(--green)">'+fmt(d.ACORDO)+'</strong></td><td><span class="dt-badge '+cvC+'">'+conv.toFixed(2)+'%</span></td></tr>';
+    return '<tr class="dt-row'+(best?' best':'')+'"><td>'+d.data.slice(5)+(best?' ⭐':'')+'</td><td>'+fmt(d.ACIO)+'</td><td>'+fmt(d.ALO)+'</td><td><span class="dt-badge '+alC+'">'+alo.toFixed(1)+'%</span></td><td>'+fmt(d.CPC)+'</td><td><span class="dt-badge '+cpC+'">'+cpc.toFixed(1)+'%</span></td><td>'+fmt(d.CPCA)+'</td><td><strong style="color:var(--green)">'+fmt(d.ACORDO)+'</strong></td><td><span class="dt-badge '+cvC+'">'+conv.toFixed(2)+'%</span></td></tr>';
   }).join('');
 }
 function generateBestDay(){
@@ -966,13 +1065,13 @@ function generateBestDay(){
     var data=getDailyFiltered(), byDate=sumDailyByDate(data);
     if(!byDate.length){ body.innerHTML='Sem dados.'; btn.disabled=false; btn.innerHTML='🏆 Analisar'; return; }
     var bAc=byDate.reduce(function(b,d){ return d.ACORDO>b.ACORDO?d:b; },byDate[0]);
-    var bCv=byDate.reduce(function(b,d){ return pctN(d.ACORDO,d.ACIO)>pctN(b.ACORDO,b.ACIO)?d:b; },byDate[0]);
+    var bCv=byDate.reduce(function(b,d){ return pctN(d.ACORDO,d.CPCA)>pctN(b.ACORDO,b.CPCA)?d:b; },byDate[0]);
     var bAL=byDate.reduce(function(b,d){ return pctN(d.ALO,d.ACIO)>pctN(b.ALO,b.ACIO)?d:b; },byDate[0]);
     var bCP=byDate.reduce(function(b,d){ return d.CPC>b.CPC?d:b; },byDate[0]);
     var bAo=byDate.reduce(function(b,d){ return d.ACIO>b.ACIO?d:b; },byDate[0]);
     var cards=[
-      {lbl:'Maior Acordo',metric:'Total de acordos',val:fmt(bAc.ACORDO),date:bAc.data.slice(5),sub:pctN(bAc.ACORDO,bAc.ACIO).toFixed(2)+'% conv.',cls:'bc-green'},
-      {lbl:'Melhor Conversão',metric:'Taxa Acordo/Acionado',val:pctN(bCv.ACORDO,bCv.ACIO).toFixed(2)+'%',date:bCv.data.slice(5),sub:fmt(bCv.ACORDO)+' acordos',cls:'bc-blue'},
+      {lbl:'Maior Acordo',metric:'Total de acordos',val:fmt(bAc.ACORDO),date:bAc.data.slice(5),sub:pctN(bAc.ACORDO,bAc.CPCA).toFixed(2)+'% conv.',cls:'bc-green'},
+      {lbl:'Melhor Conversão',metric:'Taxa Acordo/CPCA',val:pctN(bCv.ACORDO,bCv.CPCA).toFixed(2)+'%',date:bCv.data.slice(5),sub:fmt(bCv.ACORDO)+' acordos',cls:'bc-blue'},
       {lbl:'Maior ALO%',metric:'Taxa ALO/Acionado',val:pctN(bAL.ALO,bAL.ACIO).toFixed(1)+'%',date:bAL.data.slice(5),sub:fmt(bAL.ALO)+' ALOs',cls:'bc-orange'},
       {lbl:'Maior CPC',metric:'Total de CPCs',val:fmt(bCP.CPC),date:bCP.data.slice(5),sub:fmt(bCP.CPCA)+' CPCAs',cls:'bc-purple'},
       {lbl:'Maior Acionamento',metric:'Total acionado',val:fmt(bAo.ACIO),date:bAo.data.slice(5),sub:pctN(bAo.ALO,bAo.ACIO).toFixed(1)+'% ALO',cls:'bc-teal'}
@@ -983,7 +1082,7 @@ function generateBestDay(){
     }).join('');
     var avg=byDate.reduce(function(s,d){ return s+d.ACORDO; },0)/byDate.length;
     var acima=byDate.filter(function(d){ return d.ACORDO>avg; }).length;
-    var dias15=byDate.filter(function(d){ return pctN(d.ACORDO,d.ACIO)>=15; }).map(function(d){ return d.data.slice(5); });
+    var dias15=byDate.filter(function(d){ return pctN(d.ACORDO,d.CPCA)>=15; }).map(function(d){ return d.data.slice(5); });
     var h='<div style="margin-top:16px;font-size:13px;line-height:1.9;display:flex;flex-direction:column;gap:6px">';
     h+='<div>📊 Média acordos/dia: <strong>'+avg.toFixed(1)+'</strong> · <strong>'+acima+'</strong> dias acima da média ('+Math.round(acima/byDate.length*100)+'%)</div>';
     if(bAc.data===bCv.data) h+='<div>⭐ O dia <strong>'+bAc.data.slice(5)+'</strong> foi o melhor em volume e conversão.</div>';
@@ -1000,14 +1099,14 @@ function renderDaily(){
     document.getElementById('dCompGrid').innerHTML=''; return;
   }
   var byDate=sumDailyByDate(data), last=byDate[byDate.length-1];
-  var txConv=last.ACIO>0?(last.ACORDO/last.ACIO*100).toFixed(2)+'%':'—';
+  var txConv=last.CPCA>0?(last.ACORDO/last.CPCA*100).toFixed(2)+'%':'—';
   var txALO=last.ACIO>0?(last.ALO/last.ACIO*100).toFixed(1)+'%':'—';
   var txCPC=last.CPC>0?(last.ACORDO/last.CPC*100).toFixed(1)+'%':'—';
   var kpis=[
     {l:'Acionamentos',v:fmt(last.ACIO),s:'Último: '+last.data.slice(5),c:''},
     {l:'ALO',v:fmt(last.ALO),s:txALO+' do acionado',c:''},
     {l:'CPC',v:fmt(last.CPC),s:'',c:'orange'},
-    {l:'Acordos',v:fmt(last.ACORDO),s:txConv+' do acionado',c:'green'},
+    {l:'Acordos',v:fmt(last.ACORDO),s:txConv+' do CPCA',c:'green'},
     {l:'CPC→Ac.',v:txCPC,s:'',c:'purple'}
   ];
   kEl.innerHTML=kpis.map(function(k){ return '<div class="kpi-card '+k.c+'"><div class="kpi-label">'+k.l+'</div><div class="kpi-value">'+k.v+'</div>'+(k.s?'<div class="kpi-sub">'+k.s+'</div>':'')+'</div>'; }).join('');
@@ -1022,13 +1121,16 @@ function renderDaily(){
   destroyChart('dChartConv');
   charts['dChartConv']=new Chart(document.getElementById('dChartConv').getContext('2d'),{
     type:'line',data:{labels:labels,datasets:[
-      {label:'Acordo/Acion.%',data:byDate.map(function(d){ return d.ACIO>0?+(d.ACORDO/d.ACIO*100).toFixed(2):0; }),borderColor:'#3fb950',backgroundColor:'#3fb95022',borderWidth:2,tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#3fb950'},
+      {label:'Acordo/CPCA%',data:byDate.map(function(d){ return d.CPCA>0?+(d.ACORDO/d.CPCA*100).toFixed(2):0; }),borderColor:'#3fb950',backgroundColor:'#3fb95022',borderWidth:2,tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#3fb950'},
       {label:'CPC→Acordo%',data:byDate.map(function(d){ return d.CPC>0?+(d.ACORDO/d.CPC*100).toFixed(2):0; }),borderColor:'#a371f7',backgroundColor:'transparent',borderWidth:2,tension:.3,fill:false,pointRadius:3,pointBackgroundColor:'#a371f7'}
     ]},options:Object.assign(cOpts('%'),{scales:Object.assign({},cOpts('%').scales,{y:Object.assign({},cOpts('%').scales.y,{min:0})})})
   });
   destroyChart('dChartALO');
   charts['dChartALO']=new Chart(document.getElementById('dChartALO').getContext('2d'),{
-    type:'line',data:{labels:labels,datasets:[{label:'ALO/Acion.%',data:byDate.map(function(d){ return d.ACIO>0?+(d.ALO/d.ACIO*100).toFixed(1):0; }),borderColor:'#d29922',backgroundColor:'#d2992222',borderWidth:2,tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#d29922'}]},
+    type:'line',data:{labels:labels,datasets:[
+      {label:'ALO/Acion.%',data:byDate.map(function(d){ return d.ACIO>0?+(d.ALO/d.ACIO*100).toFixed(1):0; }),borderColor:'#d29922',backgroundColor:'#d2992222',borderWidth:2,tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#d29922'},
+      {label:'CPC/ALO%',data:byDate.map(function(d){ return d.ALO>0?+(d.CPC/d.ALO*100).toFixed(1):0; }),borderColor:'#2e7de9',backgroundColor:'transparent',borderWidth:2,tension:.3,fill:false,pointRadius:3,pointBackgroundColor:'#2e7de9'}
+    ]},
     options:Object.assign(cOpts('%'),{scales:Object.assign({},cOpts('%').scales,{y:Object.assign({},cOpts('%').scales.y,{min:0})})})
   });
   destroyChart('dChartCPC');
