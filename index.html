@@ -29,6 +29,26 @@ body.light {
 .var-toggle-btn{background:var(--surface2);border:none;color:var(--muted);padding:5px 12px;cursor:pointer;font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;transition:all .2s;}
 .var-toggle-btn.active{background:var(--accent);color:#fff;}
 .var-toggle-btn:hover:not(.active){background:var(--border);color:var(--text);}
+
+/* MULTI-SELECT DROPDOWN */
+.ms-wrapper{position:relative;}
+.ms-trigger{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:5px;font-family:'Barlow',sans-serif;font-size:12px;cursor:pointer;min-width:190px;display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none;transition:border-color .15s;}
+.ms-trigger:hover,.ms-trigger.open{border-color:var(--accent);}
+.ms-trigger-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ms-arrow{font-size:9px;color:var(--muted);transition:transform .2s;}
+.ms-trigger.open .ms-arrow{transform:rotate(180deg);}
+.ms-dropdown{position:absolute;top:calc(100% + 4px);left:0;min-width:100%;max-height:260px;overflow-y:auto;background:var(--surface);border:1px solid var(--accent);border-radius:6px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;}
+.ms-dropdown.open{display:block;}
+.ms-search{padding:8px;border-bottom:1px solid var(--border);}
+.ms-search input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px;font-family:'Barlow',sans-serif;}
+.ms-search input:focus{outline:none;border-color:var(--accent);}
+.ms-actions{display:flex;gap:0;border-bottom:1px solid var(--border);}
+.ms-action-btn{flex:1;background:none;border:none;color:var(--muted);font-size:10px;font-weight:700;padding:5px;cursor:pointer;font-family:'Barlow',sans-serif;letter-spacing:.5px;}
+.ms-action-btn:hover{color:var(--accent);background:var(--surface2);}
+.ms-option{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;font-size:12px;color:var(--text);transition:background .1s;}
+.ms-option:hover{background:var(--surface2);}
+.ms-option input[type=checkbox]{accent-color:var(--accent);width:13px;height:13px;cursor:pointer;}
+.ms-option.checked{background:var(--accent2)22;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;min-height:100vh;}
 
@@ -152,7 +172,20 @@ svg.funnel-svg{overflow:visible;}
 <div class="filters">
   <div class="filter-group">
     <span class="filter-label">Faixa</span>
-    <select class="filter-select" id="filterFaixa" onchange="render()"><option value="ALL">Todas</option></select>
+    <div class="ms-wrapper" id="msWrapperFaixa">
+      <div class="ms-trigger" id="msTriggerFaixa" onclick="toggleMS('Faixa')">
+        <span class="ms-trigger-text" id="msTriggerTextFaixa">Todas</span>
+        <span class="ms-arrow">▼</span>
+      </div>
+      <div class="ms-dropdown" id="msDropdownFaixa">
+        <div class="ms-search"><input type="text" placeholder="Buscar faixa..." oninput="filterMS('Faixa',this.value)"></div>
+        <div class="ms-actions">
+          <button class="ms-action-btn" onclick="selectAllMS('Faixa')">✓ Todas</button>
+          <button class="ms-action-btn" onclick="clearAllMS('Faixa')">✗ Limpar</button>
+        </div>
+        <div id="msOptionsFaixa"></div>
+      </div>
+    </div>
   </div>
   <div class="filter-group">
     <span class="filter-label">Carteira</span>
@@ -331,25 +364,98 @@ function handleUpload(e) {
   reader.readAsArrayBuffer(file);
 }
 
+// ── MULTI-SELECT ─────────────────────────────────────────────────
 function getUnique(key) {
   return [...new Set(allData.map(r=>r[key]).filter(v=>v&&v!=='NULL'))].sort();
 }
+const msState = { Faixa: new Set() }; // empty = ALL selected
+
+function toggleMS(name) {
+  const trigger = document.getElementById('msTrigger'+name);
+  const dropdown = document.getElementById('msDropdown'+name);
+  const isOpen = dropdown.classList.toggle('open');
+  trigger.classList.toggle('open', isOpen);
+  if(isOpen) document.getElementById('msOptions'+name).querySelector && setTimeout(()=>{ try{ document.querySelector('#msDropdown'+name+' input').focus(); }catch(e){} },50);
+}
+function closeAllMS(except) {
+  ['Faixa'].forEach(n=>{ if(n!==except){ document.getElementById('msDropdown'+n)?.classList.remove('open'); document.getElementById('msTrigger'+n)?.classList.remove('open'); }});
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.ms-wrapper')) closeAllMS(null);
+});
+
+function buildMSOptions(name, vals) {
+  const sel = msState[name];
+  const container = document.getElementById('msOptions'+name);
+  container.innerHTML = vals.map(v=>`
+    <label class="ms-option ${sel.size===0||sel.has(v)?'checked':''}" data-val="${v}">
+      <input type="checkbox" ${sel.size===0||sel.has(v)?'checked':''} onchange="toggleMSOption('${name}','${v}',this.checked)">
+      ${v}
+    </label>`).join('');
+  updateMSTrigger(name, vals);
+}
+function toggleMSOption(name, val, checked) {
+  const sel = msState[name];
+  const allVals = getUnique(name==='Faixa'?'faixa':'');
+  if(sel.size===0) {
+    // Was "all" — now explicitly deselect one: select all except this one
+    allVals.forEach(v=>{ if(v!==val) sel.add(v); });
+  } else {
+    checked ? sel.add(val) : sel.delete(val);
+    if(sel.size===allVals.length) sel.clear(); // back to "all"
+  }
+  buildMSOptions(name, allVals);
+  render();
+}
+function selectAllMS(name) {
+  msState[name].clear();
+  buildMSOptions(name, getUnique(name==='Faixa'?'faixa':''));
+  render();
+}
+function clearAllMS(name) {
+  // Select none = show nothing; instead keep first item
+  msState[name].clear();
+  const vals = getUnique(name==='Faixa'?'faixa':'');
+  if(vals.length) { vals.forEach(v=>msState[name].add(v)); msState[name].delete(vals[0]); }
+  buildMSOptions(name, vals);
+  render();
+}
+function filterMS(name, q) {
+  const allVals = getUnique(name==='Faixa'?'faixa':'');
+  const filtered = q ? allVals.filter(v=>v.toLowerCase().includes(q.toLowerCase())) : allVals;
+  const sel = msState[name];
+  const container = document.getElementById('msOptions'+name);
+  container.innerHTML = filtered.map(v=>`
+    <label class="ms-option ${sel.size===0||sel.has(v)?'checked':''}" data-val="${v}">
+      <input type="checkbox" ${sel.size===0||sel.has(v)?'checked':''} onchange="toggleMSOption('${name}','${v}',this.checked)">
+      ${v}
+    </label>`).join('');
+}
+function updateMSTrigger(name, allVals) {
+  const sel = msState[name];
+  const txt = document.getElementById('msTriggerText'+name);
+  if(sel.size===0) { txt.textContent='Todas'; return; }
+  if(sel.size===1) { txt.textContent=[...sel][0]; return; }
+  txt.textContent=sel.size+' faixas selecionadas';
+}
+
 function rebuildFilters() {
   const rebuild = (sel, vals) => {
     const cur = sel.value; sel.innerHTML = '<option value="ALL">Todos</option>';
     vals.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; if(String(v)===cur) o.selected=true; sel.appendChild(o); });
   };
-  rebuild(document.getElementById('filterFaixa'), getUnique('faixa'));
+  const faixaVals = getUnique('faixa');
+  buildMSOptions('Faixa', faixaVals);
   rebuild(document.getElementById('filterCarteira'), getUnique('ID_CARTEIRA'));
   rebuild(document.getElementById('filterRanking'), getUnique('RANKING'));
 }
 function getFiltered() {
-  const faixa = document.getElementById('filterFaixa').value;
+  const faixaSel = msState['Faixa'];
   const cart = document.getElementById('filterCarteira').value;
   const rank = document.getElementById('filterRanking').value;
   return allData.filter(r => {
     if(r.faixa==='NULL'||r.RANKING==='NULL') return false;
-    if(faixa!=='ALL'&&r.faixa!==faixa) return false;
+    if(faixaSel.size>0 && !faixaSel.has(r.faixa)) return false;
     if(cart!=='ALL'&&String(r.ID_CARTEIRA)!==cart) return false;
     if(rank!=='ALL'&&r.RANKING!==rank) return false;
     return true;
