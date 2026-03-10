@@ -15,6 +15,20 @@
   --green:#3fb950; --orange:#d29922; --red:#f85149;
   --f2:#264061; --f3:#1e3a6e; --f4:#263d5a;
 }
+body.light {
+  --bg:#f0f2f5; --surface:#ffffff; --surface2:#e8edf3; --border:#d0d7de;
+  --accent:#2e7de9; --accent2:#1a4f9c; --text:#1a1f27; --muted:#57606a;
+  --green:#1a7f37; --orange:#9a6700; --red:#cf222e;
+  --f2:#c8daee; --f3:#b0c8e8; --f4:#bfcfdf;
+}
+.theme-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s;}
+.theme-btn:hover{border-color:var(--accent);}
+.du-badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--muted);}
+.du-badge strong{color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;}
+.var-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.var-toggle-btn{background:var(--surface2);border:none;color:var(--muted);padding:5px 12px;cursor:pointer;font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;transition:all .2s;}
+.var-toggle-btn.active{background:var(--accent);color:#fff;}
+.var-toggle-btn:hover:not(.active){background:var(--border);color:var(--text);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;min-height:100vh;}
 
@@ -128,6 +142,7 @@ svg.funnel-svg{overflow:visible;}
     </div>
   </div>
   <div class="upload-area">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙 Escuro</button>
     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Atualizar Dados</button>
     <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleUpload(event)">
     <span class="upload-label" id="uploadLabel">Carregar novo .xlsx</span>
@@ -146,6 +161,16 @@ svg.funnel-svg{overflow:visible;}
   <div class="filter-group">
     <span class="filter-label">Ranking</span>
     <select class="filter-select" id="filterRanking" onchange="render()"><option value="ALL">Todos</option></select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Variação exibir</span>
+    <div class="var-toggle">
+      <button class="var-toggle-btn active" id="varBtnPct" onclick="setVarMode('pct')">% s/ Base</button>
+      <button class="var-toggle-btn" id="varBtnQtd" onclick="setVarMode('qtd')">Qtd</button>
+    </div>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;">
+    <div class="du-badge" id="duBadge">📅 DU acumulado: <strong id="duVal">—</strong></div>
   </div>
 </div>
 
@@ -214,11 +239,24 @@ svg.funnel-svg{overflow:visible;}
   <div>
     <div class="analysis-card">
       <div class="analysis-header">
-        <div class="analysis-title">✦ Comentários de Análise (IA)</div>
+        <div class="analysis-title">✦ Análise Geral do Funil</div>
         <button class="analysis-btn" id="analysisBtn" onclick="generateAnalysis()">✦ Gerar Análise</button>
       </div>
       <div class="analysis-body" id="analysisBody">
         Clique em <strong>Gerar Análise</strong> para obter comentários automáticos sobre os dados do funil.
+      </div>
+    </div>
+  </div>
+
+  <!-- FAIXA ANALYSIS -->
+  <div>
+    <div class="analysis-card">
+      <div class="analysis-header">
+        <div class="analysis-title">📊 Análise por Faixa de Vencimento</div>
+        <button class="analysis-btn" id="faixaAnalysisBtn" onclick="generateFaixaAnalysis()">📊 Analisar Faixas</button>
+      </div>
+      <div class="analysis-body" id="faixaAnalysisBody">
+        Clique em <strong>Analisar Faixas</strong> para ver quais faixas evoluíram ou regrediram entre os meses.
       </div>
     </div>
   </div>
@@ -249,6 +287,27 @@ const EMBEDDED_ROWS = [["NULL",1,"NULL",3,2,0,0,0,0,"FEVEREIRO",4],["AA - DE 1 A
 
 let allData = parseRows(EMBEDDED_HEADERS, EMBEDDED_ROWS);
 let charts = {};
+let varMode = 'pct'; // 'pct' or 'qtd'
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  const btn = document.getElementById('themeBtn');
+  btn.textContent = isLight ? '🌙 Escuro' : '☀️ Claro';
+  // Redraw charts to pick up new colors
+  render();
+}
+function setVarMode(mode) {
+  varMode = mode;
+  document.getElementById('varBtnPct').classList.toggle('active', mode==='pct');
+  document.getElementById('varBtnQtd').classList.toggle('active', mode==='qtd');
+  render();
+}
+function updateDU(data) {
+  // Get max DU from current filtered data
+  const dus = data.map(r=>Number(r.DU)||0).filter(v=>v>0);
+  const du = dus.length ? Math.max(...dus) : null;
+  document.getElementById('duVal').textContent = du ? du + ' DU' : '—';
+}
 
 function parseRows(headers, rows) {
   return rows.map(r => { const o={}; headers.forEach((h,i)=>o[h]=r[i]); return o; });
@@ -320,17 +379,36 @@ function sumByFaixaMes(data) {
 const fmt = n => Number(n).toLocaleString('pt-BR');
 const pctN = (a,b) => b>0 ? (a/b*100) : 0;
 const pctS = (a,b) => b>0 ? (a/b*100).toFixed(1)+'%' : '—';
-function varBadge(cur, prev) {
-  if(!prev || prev===0) return '<span class="var-badge neu">—</span>';
-  const v = ((cur-prev)/prev*100);
-  const cls = v>0?'up':v<0?'down':'neu';
-  const arrow = v>0?'▲':v<0?'▼':'–';
-  return `<span class="var-badge ${cls}">${arrow} ${Math.abs(v).toFixed(1)}%</span>`;
+function varBadge(cur, prev, curBase, prevBase) {
+  if(varMode === 'pct') {
+    // Compare % over base
+    const curPct = curBase>0 ? cur/curBase*100 : 0;
+    const prevPct = prevBase>0 ? prev/prevBase*100 : 0;
+    if(prevPct===0) return '<span class="var-badge neu">—</span>';
+    const v = curPct - prevPct; // pp difference
+    const cls = v>0?'up':v<0?'down':'neu';
+    const arrow = v>0?'▲':v<0?'▼':'–';
+    return `<span class="var-badge ${cls}">${arrow} ${Math.abs(v).toFixed(2)}pp</span>`;
+  } else {
+    if(!prev || prev===0) return '<span class="var-badge neu">—</span>';
+    const v = ((cur-prev)/prev*100);
+    const cls = v>0?'up':v<0?'down':'neu';
+    const arrow = v>0?'▲':v<0?'▼':'–';
+    return `<span class="var-badge ${cls}">${arrow} ${Math.abs(v).toFixed(1)}%</span>`;
+  }
 }
-function varText(cur, prev) {
-  if(!prev||prev===0) return {cls:'var-neu',txt:'—'};
-  const v=((cur-prev)/prev*100);
-  return {cls:v>0?'var-up':v<0?'var-down':'var-neu', txt:(v>0?'▲':'▼')+' '+Math.abs(v).toFixed(1)+'%'};
+function varText(cur, prev, curBase, prevBase) {
+  if(varMode === 'pct') {
+    const curPct = curBase>0 ? cur/curBase*100 : 0;
+    const prevPct = prevBase>0 ? prev/prevBase*100 : 0;
+    if(prevPct===0) return {cls:'var-neu',txt:'—'};
+    const v = curPct - prevPct;
+    return {cls:v>0?'var-up':v<0?'var-down':'var-neu', txt:(v>0?'▲':'▼')+' '+Math.abs(v).toFixed(2)+'pp'};
+  } else {
+    if(!prev||prev===0) return {cls:'var-neu',txt:'—'};
+    const v=((cur-prev)/prev*100);
+    return {cls:v>0?'var-up':v<0?'var-down':'var-neu', txt:(v>0?'▲':'▼')+' '+Math.abs(v).toFixed(1)+'%'};
+  }
 }
 
 // ── KPI CARDS ────────────────────────────────────────────────────
@@ -348,7 +426,18 @@ function renderKPI(byMes) {
   document.getElementById('kpiGrid').innerHTML = cards.map(c => {
     const curVal = c.key==='CONV' ? pctN(last.ACORDO,last.BASE) : last[c.key];
     const prevVal = prev ? (c.key==='CONV' ? pctN(prev.ACORDO,prev.BASE) : prev[c.key]) : null;
-    const vt = prevVal!==null ? varText(curVal,prevVal) : null;
+    let vt = null;
+    if(prevVal !== null) {
+      if(varMode==='pct' && c.key!=='CONV' && c.key!=='BASE') {
+        // Compare % over base
+        const curP = pctN(last[c.key], last.BASE);
+        const prevP = pctN(prev[c.key], prev.BASE);
+        const diff = curP - prevP;
+        vt = {cls: diff>0?'var-up':diff<0?'var-down':'var-neu', txt:(diff>0?'▲':'▼')+' '+Math.abs(diff).toFixed(2)+'pp'};
+      } else {
+        vt = varText(curVal, prevVal, last.BASE, prev.BASE);
+      }
+    }
     return `<div class="kpi-card ${c.cls}">
       <div class="kpi-label">${c.label}</div>
       <div class="kpi-value">${c.val}</div>
@@ -411,7 +500,7 @@ function renderFunnelTable(byMes) {
       const d=byMes[m], prev=mi>0?byMes[meses[mi-1]]:null;
       const val=d[s.key];
       const pctVal=s.key==='BASE'?'BASE':pctS(val,d.BASE);
-      const vt=prev?varText(val,prev[s.key]):{cls:'var-neu',txt:'—'};
+      const vt=prev?varText(val,prev[s.key],d.BASE,prev.BASE):{cls:'var-neu',txt:'—'};
       html+=`<div class="funnel-cell ${s.valCls}">${fmt(val)}</div>`;
       html+=`<div class="funnel-cell ${s.pctCls||'pct'}">${pctVal}</div>`;
       html+=`<div class="funnel-cell ${vt.cls}">${vt.txt}</div>`;
@@ -548,7 +637,7 @@ function renderFaixaTable(data) {
     const mesIdx=meses.indexOf(r.mes);
     const prevMes=mesIdx>0?meses[mesIdx-1]:null;
     const prev=prevMes?lookup[r.faixa+'|||'+prevMes]:null;
-    const vb=prev?varBadge(r.ACORDO,prev.ACORDO):'<span class="var-badge neu">—</span>';
+    const vb=prev?varBadge(r.ACORDO,prev.ACORDO,r.BASE,prev.BASE):'<span class="var-badge neu">—</span>';
     return `<tr><td>${r.faixa}</td><td>${r.mes}</td><td>${fmt(r.BASE)}</td><td>${fmt(r.DISC)}</td><td>${fmt(r.ACIO)}</td><td>${fmt(r.ALO)}</td><td>${fmt(r.CPC)}</td><td>${fmt(r.ACORDO)}</td><td><span class="pct-badge ${cls}">${pctS(r.ACORDO,r.BASE)}</span></td><td>${vb}</td></tr>`;
   }).join('');
 }
@@ -682,12 +771,107 @@ function generateAnalysis() {
   }, 600);
 }
 
+// ── ANÁLISE POR FAIXA ─────────────────────────────────────────────
+function generateFaixaAnalysis() {
+  const btn=document.getElementById('faixaAnalysisBtn');
+  const body=document.getElementById('faixaAnalysisBody');
+  btn.disabled=true; btn.textContent='Analisando...';
+  body.innerHTML='<span style="color:var(--muted);font-style:italic">Processando faixas...</span>';
+  setTimeout(()=>{
+    const filtered=getFiltered();
+    const grouped=sumByFaixaMes(filtered);
+    const meses=[...new Set(grouped.map(r=>r.mes))].sort();
+    if(meses.length<2){
+      body.innerHTML='<span style="color:var(--muted)">É necessário ter pelo menos 2 meses de dados para comparar faixas.</span>';
+      btn.disabled=false; btn.innerHTML='📊 Analisar Faixas'; return;
+    }
+    const m1=meses[meses.length-2], m2=meses[meses.length-1];
+    const lookup={};
+    grouped.forEach(r=>{ lookup[r.faixa+'|||'+r.mes]=r; });
+    const faixas=[...new Set(grouped.map(r=>r.faixa))].sort();
+
+    const melhoras=[], pioras=[], estavel=[], semDados=[];
+    faixas.forEach(f=>{
+      const d1=lookup[f+'|||'+m1], d2=lookup[f+'|||'+m2];
+      if(!d1||!d2||d1.BASE===0||d2.BASE===0){semDados.push(f);return;}
+      const tx1=d1.ACORDO/d1.BASE*100, tx2=d2.ACORDO/d2.BASE*100;
+      const diff=tx2-tx1;
+      const row={f,tx1,tx2,diff,acord1:d1.ACORDO,acord2:d2.ACORDO,base1:d1.BASE,base2:d2.BASE};
+      if(diff>0.05) melhoras.push(row);
+      else if(diff<-0.05) pioras.push(row);
+      else estavel.push(row);
+    });
+    melhoras.sort((a,b)=>b.diff-a.diff);
+    pioras.sort((a,b)=>a.diff-b.diff);
+
+    const secStyle=(cor)=>`font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;color:${cor};text-transform:uppercase;margin-bottom:8px`;
+    const fmtDiff=(d)=>(d>0?'▲ +':'▼ ')+Math.abs(d).toFixed(2)+'pp';
+    const diffCor=(d)=>d>0?'#3fb950':'#f85149';
+
+    let html=`<div style="margin-bottom:6px;font-size:12px;color:var(--muted)">Comparativo <strong style="color:var(--text)">${m1}</strong> → <strong style="color:var(--text)">${m2}</strong> · variação em pp de Acordo%/Base</div>`;
+
+    if(melhoras.length){
+      html+=`<div style="margin-bottom:14px"><div style="${secStyle('#3fb950')}">✅ Faixas que Melhoraram (${melhoras.length})</div>`;
+      html+=`<div style="display:flex;flex-direction:column;gap:4px">`;
+      melhoras.forEach(r=>{
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;border-left:3px solid #3fb950">
+          <span style="flex:1;font-size:12px;color:var(--text)">${r.f}</span>
+          <span style="font-size:11px;color:var(--muted)">${r.tx1.toFixed(2)}% → ${r.tx2.toFixed(2)}%</span>
+          <span style="font-weight:700;color:#3fb950;font-size:12px">${fmtDiff(r.diff)}</span>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    if(pioras.length){
+      html+=`<div style="margin-bottom:14px"><div style="${secStyle('#f85149')}">⚠ Faixas que Regrediram (${pioras.length})</div>`;
+      html+=`<div style="display:flex;flex-direction:column;gap:4px">`;
+      pioras.forEach(r=>{
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;border-left:3px solid #f85149">
+          <span style="flex:1;font-size:12px;color:var(--text)">${r.f}</span>
+          <span style="font-size:11px;color:var(--muted)">${r.tx1.toFixed(2)}% → ${r.tx2.toFixed(2)}%</span>
+          <span style="font-weight:700;color:#f85149;font-size:12px">${fmtDiff(r.diff)}</span>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    if(estavel.length){
+      html+=`<div style="margin-bottom:14px"><div style="${secStyle('#8b949e')}">➖ Faixas Estáveis (${estavel.length})</div>`;
+      html+=`<div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      estavel.forEach(r=>{
+        html+=`<span style="padding:3px 10px;background:var(--surface2);border-radius:4px;font-size:11px;color:var(--muted)">${r.f} <strong style="color:var(--text)">${r.tx2.toFixed(2)}%</strong></span>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    // Destaque: melhor e pior absoluta
+    if(melhoras.length){
+      const top=melhoras[0];
+      html+=`<div style="margin-top:8px;padding:10px 14px;background:linear-gradient(90deg,#0d2a1a,var(--surface2));border-radius:6px;border-left:4px solid #3fb950;font-size:12px">
+        ⭐ <strong>Destaque positivo:</strong> <span style="color:var(--text)">${top.f}</span> — evoluiu ${top.tx1.toFixed(2)}% → ${top.tx2.toFixed(2)}% (+${top.diff.toFixed(2)}pp) com ${fmt(top.acord2)} acordos em ${m2}
+      </div>`;
+    }
+    if(pioras.length){
+      const bot=pioras[0];
+      html+=`<div style="margin-top:8px;padding:10px 14px;background:linear-gradient(90deg,#2a0d0d,var(--surface2));border-radius:6px;border-left:4px solid #f85149;font-size:12px">
+        🔴 <strong>Maior queda:</strong> <span style="color:var(--text)">${bot.f}</span> — caiu ${bot.tx1.toFixed(2)}% → ${bot.tx2.toFixed(2)}% (${bot.diff.toFixed(2)}pp) em ${m2}
+      </div>`;
+    }
+
+    body.className='analysis-body';
+    body.innerHTML=html;
+    btn.disabled=false; btn.innerHTML='📊 Atualizar Faixas';
+  },400);
+}
+
 // ── MAIN RENDER ──────────────────────────────────────────────────
 function render() {
   const filtered=getFiltered();
   const byMes=sumByMes(filtered);
   const meses=Object.keys(byMes);
   if(!meses.length) { document.getElementById('funnelTable').innerHTML='<div style="color:var(--muted);padding:20px">Nenhum dado para os filtros selecionados.</div>'; return; }
+  updateDU(filtered);
   renderKPI(byMes);
   renderFunnelSVG();
   renderFunnelTable(byMes);
