@@ -173,14 +173,14 @@ svg.funnel-svg{overflow:visible;}
 .d-step-fill-val{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#fff;white-space:nowrap;}
 .d-step-fill-pct{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:rgba(255,255,255,.75);white-space:nowrap;}
 /* Daily table */
-.dt-wrap{overflow-x:auto;max-height:440px;overflow-y:auto;}
-.dt-table{width:100%;border-collapse:separate;border-spacing:0 3px;font-size:12px;}
-.dt-table th{position:sticky;top:0;z-index:2;background:var(--surface2);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:10px;padding:9px 14px;text-align:right;white-space:nowrap;}
-.dt-table th:first-child{text-align:left;border-radius:6px 0 0 6px;}
-.dt-table th:last-child{border-radius:0 6px 6px 0;}
-.dt-row td{padding:9px 14px;background:var(--surface);text-align:right;color:var(--text);white-space:nowrap;}
-.dt-row td:first-child{text-align:left;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:13px;border-radius:6px 0 0 6px;border-left:3px solid var(--border);}
-.dt-row td:last-child{border-radius:0 6px 6px 0;}
+.dt-wrap{overflow-x:auto;max-height:500px;overflow-y:auto;}
+.dt-table{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:12px;min-width:760px;}
+.dt-table th{position:sticky;top:0;z-index:2;background:var(--surface2);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:10px;padding:10px 20px;text-align:right;white-space:nowrap;}
+.dt-table th:first-child{text-align:left;border-radius:6px 0 0 6px;min-width:110px;padding-left:18px;}
+.dt-table th:last-child{border-radius:0 6px 6px 0;padding-right:18px;}
+.dt-row td{padding:10px 20px;background:var(--surface);text-align:right;color:var(--text);white-space:nowrap;}
+.dt-row td:first-child{text-align:left;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:13px;border-radius:6px 0 0 6px;border-left:3px solid var(--border);min-width:110px;padding-left:18px;}
+.dt-row td:last-child{border-radius:0 6px 6px 0;padding-right:18px;}
 .dt-row:hover td{background:var(--surface2)!important;}
 .dt-row.best td{border-left-color:var(--green)!important;background:rgba(63,185,80,.05)!important;}
 .dt-row.best td:first-child{color:var(--green);}
@@ -260,11 +260,37 @@ svg.funnel-svg{overflow:visible;}
   </div>
   <div class="filter-group">
     <span class="filter-label">Carteira</span>
-    <select class="filter-select" id="filterCarteira" onchange="render()"><option value="ALL">Todas</option></select>
+    <div class="ms-wrapper" id="msWrapCarteira">
+      <div class="ms-trigger" id="msTriggerCarteira" onclick="toggleMSKey('Carteira')">
+        <span class="ms-trigger-text" id="msTriggerTextCarteira">Todas</span>
+        <span class="ms-arrow">&#9660;</span>
+      </div>
+      <div class="ms-dropdown" id="msDropdownCarteira" style="min-width:160px">
+        <div class="ms-search"><input type="text" placeholder="Buscar..." oninput="buildMSOptionsKey('Carteira',this.value)"></div>
+        <div class="ms-actions">
+          <button class="ms-action-btn" onclick="selectAllMSKey('Carteira')">&#10003; Todas</button>
+          <button class="ms-action-btn" onclick="clearAllMSKey('Carteira')">&#10007; Limpar</button>
+        </div>
+        <div id="msOptionsCarteira"></div>
+      </div>
+    </div>
   </div>
   <div class="filter-group">
     <span class="filter-label">Ranking</span>
-    <select class="filter-select" id="filterRanking" onchange="render()"><option value="ALL">Todos</option></select>
+    <div class="ms-wrapper" id="msWrapRanking">
+      <div class="ms-trigger" id="msTriggerRanking" onclick="toggleMSKey('Ranking')">
+        <span class="ms-trigger-text" id="msTriggerTextRanking">Todos</span>
+        <span class="ms-arrow">&#9660;</span>
+      </div>
+      <div class="ms-dropdown" id="msDropdownRanking" style="min-width:160px">
+        <div class="ms-search"><input type="text" placeholder="Buscar..." oninput="buildMSOptionsKey('Ranking',this.value)"></div>
+        <div class="ms-actions">
+          <button class="ms-action-btn" onclick="selectAllMSKey('Ranking')">&#10003; Todos</button>
+          <button class="ms-action-btn" onclick="clearAllMSKey('Ranking')">&#10007; Limpar</button>
+        </div>
+        <div id="msOptionsRanking"></div>
+      </div>
+    </div>
   </div>
   <div class="filter-group">
     <span class="filter-label">Variação</span>
@@ -618,7 +644,7 @@ function buildMSOptions(q){
       var allV=getUnique('faixa');
       if(selectedFaixas===null) selectedFaixas=new Set(allV);
       if(cb.checked) selectedFaixas.add(v); else selectedFaixas.delete(v);
-      if(selectedFaixas.size===0||selectedFaixas.size===allV.length) selectedFaixas=null;
+      if(selectedFaixas.size===allV.length) selectedFaixas=null;
       var inp=document.querySelector('#msDropdownFaixa input[type=text]');
       buildMSOptions(inp?inp.value:'');
       render();
@@ -626,31 +652,84 @@ function buildMSOptions(q){
     lbl.appendChild(cb); lbl.appendChild(document.createTextNode(' '+v)); c.appendChild(lbl);
   });
   var txt=document.getElementById('msTriggerTextFaixa');
-  if(!selectedFaixas||selectedFaixas.size===0) txt.textContent='Todas';
+  if(selectedFaixas===null) txt.textContent='Todas';
+  else if(selectedFaixas.size===0) txt.textContent='Nenhuma';
   else if(selectedFaixas.size===1) txt.textContent=Array.from(selectedFaixas)[0];
   else txt.textContent=selectedFaixas.size+' faixas';
 }
 function selectAllMS(){ selectedFaixas=null; buildMSOptions(''); document.querySelector('#msDropdownFaixa input[type=text]').value=''; render(); }
-function clearAllMS(){ selectedFaixas=null; buildMSOptions(''); render(); }
+function clearAllMS(){ selectedFaixas=new Set(); buildMSOptions(''); document.querySelector('#msDropdownFaixa input[type=text]').value=''; render(); }
+
+// ── MULTISELECT GENERICO Carteira / Ranking mensal ──
+// Estado: null = todos selecionados | Set vazio = nenhum (igual padrão DMS da Visão Diária)
+var selectedCarteiras = null;
+var selectedRankings  = null;
+var msKeyMap = {
+  Carteira:{ dataKey:'ID_CARTEIRA', getSet:function(){ return selectedCarteiras; }, setSet:function(v){ selectedCarteiras=v; }, labelAll:'Todas', labelNone:'Nenhuma', pluralFn:function(n){ return n+' carteiras'; } },
+  Ranking: { dataKey:'RANKING',     getSet:function(){ return selectedRankings;  }, setSet:function(v){ selectedRankings=v;  }, labelAll:'Todos',  labelNone:'Nenhum',  pluralFn:function(n){ return n+' rankings';  } }
+};
+function getMSKeyState(key){ return msKeyMap[key].getSet(); }
+function setMSKeyState(key,val){ msKeyMap[key].setSet(val); }
+function toggleMSKey(key){
+  var trigger=document.getElementById('msTrigger'+key);
+  var dropdown=document.getElementById('msDropdown'+key);
+  var willOpen=!dropdown.classList.contains('open');
+  document.querySelectorAll('.ms-dropdown').forEach(function(x){ x.classList.remove('open'); });
+  document.querySelectorAll('.ms-trigger').forEach(function(x){ x.classList.remove('open'); });
+  if(willOpen){ dropdown.classList.add('open'); trigger.classList.add('open');
+    setTimeout(function(){ var i=dropdown.querySelector('input[type=text]'); if(i) i.focus(); },50); }
+}
+function buildMSOptionsKey(key, q){
+  var cfg=msKeyMap[key];
+  var all=getUnique(cfg.dataKey);
+  var vals=q ? all.filter(function(v){ return String(v).toLowerCase().indexOf(q.toLowerCase())>=0; }) : all;
+  var c=document.getElementById('msOptions'+key); c.innerHTML='';
+  var cur=getMSKeyState(key);
+  vals.forEach(function(v){
+    var lbl=document.createElement('label');
+    var chk=cur===null||cur.has(String(v));
+    lbl.className='ms-option'+(chk?' checked':'');
+    var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=chk;
+    cb.addEventListener('change',function(){
+      var allV=getUnique(cfg.dataKey).map(String);
+      var s=getMSKeyState(key);
+      if(s===null){ s=new Set(allV); setMSKeyState(key,s); }
+      if(cb.checked) s.add(String(v)); else s.delete(String(v));
+      // Se todos marcados → null (Todas). Se nenhum → mantém Set vazio (Nenhum)
+      if(s.size===allV.length) setMSKeyState(key,null); // Set vazio permanece Set vazio (Nenhum)
+      var inp=document.querySelector('#msDropdown'+key+' input[type=text]');
+      buildMSOptionsKey(key, inp?inp.value:'');
+      render();
+    });
+    lbl.appendChild(cb); lbl.appendChild(document.createTextNode(' '+v)); c.appendChild(lbl);
+  });
+  updateMSKeyTriggerText(key);
+}
+function updateMSKeyTriggerText(key){
+  var cfg=msKeyMap[key], state=getMSKeyState(key);
+  var txt=document.getElementById('msTriggerText'+key);
+  if(state===null){ txt.textContent=cfg.labelAll; return; }
+  if(state.size===0){ txt.textContent=cfg.labelNone; return; }
+  if(state.size===1){ txt.textContent=Array.from(state)[0]; return; }
+  txt.textContent=cfg.pluralFn(state.size);
+}
+// "Todos" → null (tudo marcado) | "Limpar" → Set vazio (nenhum marcado) — idêntico ao DMS
+function selectAllMSKey(key){ setMSKeyState(key,null); buildMSOptionsKey(key,''); var inp=document.querySelector('#msDropdown'+key+' input[type=text]'); if(inp) inp.value=''; render(); }
+function clearAllMSKey(key){ setMSKeyState(key,new Set()); buildMSOptionsKey(key,''); var inp=document.querySelector('#msDropdown'+key+' input[type=text]'); if(inp) inp.value=''; render(); }
 
 // ── MENSAL FILTERS ──
 function rebuildFilters(){
-  function rebuild(sel,vals){
-    var cur=sel.value; sel.innerHTML='<option value="ALL">Todos</option>';
-    vals.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; if(String(v)===cur) o.selected=true; sel.appendChild(o); });
-  }
   buildMSOptions('');
-  rebuild(document.getElementById('filterCarteira'),getUnique('ID_CARTEIRA'));
-  rebuild(document.getElementById('filterRanking'),getUnique('RANKING'));
+  buildMSOptionsKey('Carteira','');
+  buildMSOptionsKey('Ranking','');
 }
 function getFiltered(){
-  var cart=document.getElementById('filterCarteira').value;
-  var rank=document.getElementById('filterRanking').value;
   return allData.filter(function(r){
     if(r.faixa==='NULL'||r.RANKING==='NULL') return false;
-    if(selectedFaixas!==null&&!selectedFaixas.has(r.faixa)) return false;
-    if(cart!=='ALL'&&String(r.ID_CARTEIRA)!==cart) return false;
-    if(rank!=='ALL'&&r.RANKING!==rank) return false;
+    if(selectedFaixas!==null&&(selectedFaixas.size===0||!selectedFaixas.has(r.faixa))) return false;
+    // Set vazio = nenhum selecionado = nada passa
+    var sc=getMSKeyState('Carteira'); if(sc!==null&&!sc.has(String(r.ID_CARTEIRA))) return false;
+    var sr=getMSKeyState('Ranking');  if(sr!==null&&!sr.has(r.RANKING)) return false;
     return true;
   });
 }
